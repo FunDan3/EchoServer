@@ -2,6 +2,7 @@
 from httpdecolib import WebServer
 import pqcryptography as pqc
 import json
+import os
 
 from components import config
 from components import common
@@ -24,6 +25,33 @@ api = WebServer(settings["ip"], settings["port"])
 if settings["ssl"]["enabled"]:
 	api.convert_to_ssl(config["ssl"]["certificate_path"], config["ssl"]["key_path"])
 
+@api.post("/store_container")
+@check.verify(["login", "token"])
+@check.login_validity
+@check.login_does_exist
+@check.login_check(user_tokens)
+def store_container(interface):
+	encrypted_container = interface.data
+	if len(encrypted_container) > 2**20*10: #10 megabytes
+		interface.error(403, f"Container is two big. Maximal size is: {2**20*10}")
+		return
+	with open(f"./storage/users/{interface.json['login']}/container.epickle", "wb") as f:
+		f.write(encrypted_container)
+	interface.finish(200)
+
+@api.post("/login")
+@check.verify(["login", "token", "ReadContainer"])
+@check.login_validity
+@check.login_does_exist
+@check.login_check(user_tokens)
+def login(interface):
+	if interface.json["ReadContainer"] == "yes":
+		if not os.path.exists(f"./storage/users/{interface.json['login']}/container.epickle"):
+			interface.error(404, "Container doesnt exists.")
+			return
+		with open(f"./storage/users/{interface.json['login']}/container.epickle", "rb") as f:
+			interface.write(f.read())
+	interface.finish(200)
 
 @api.post("/register")
 @check.verify(["login", "token", "kem_algorithm", "sig_algorithm"])
@@ -38,6 +66,7 @@ def register(interface):
 	public_keys.save()
 
 	user_tokens[interface.json["login"]] = common.hash(interface.json["token"]).hexdigest()
+	print(user_tokens)
 	user_tokens.save()
 
 	interface.finish(200)

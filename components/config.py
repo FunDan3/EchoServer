@@ -15,7 +15,7 @@ class merged_certain:
 			with open(self.path, "rb") as f:
 				self.content = json.loads(f.readline())
 				self.raw = f.read()
-			exist = True
+			self.exist = True
 		except FileNotFoundError:
 			self.content = {}
 			self.raw = b""
@@ -54,7 +54,7 @@ class merged_certain:
 
 	#other
 	def __str__(self):
-		return str(self.data)
+		return str(self.content)
 
 class merged_uncertain(merged_certain):
 	path = None

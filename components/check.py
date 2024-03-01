@@ -1,6 +1,8 @@
 import os
 import pqcryptography as pqc
 
+from . import common
+
 allowed_characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_"
 
 def _interface_init(interface):
@@ -37,6 +39,26 @@ def login_doesnt_exist(function):
 		else:
 			function(interface)
 	return wrapper
+
+def login_does_exist(function):
+	def wrapper(interface):
+		_interface_init(interface)
+		if os.path.exists(f"./storage/users/{interface.json['login']}"):
+			function(interface)
+		else:
+			interface.error(401, f"User {interface.json['login']} doesnt exist!")
+	return wrapper
+
+def login_check(user_tokens):
+	def init_wrapper(function):
+		def wrapper(interface):
+			_interface_init(interface)
+			if user_tokens[interface.json["login"]] == common.hash(interface.json["token"]).hexdigest():
+				function(interface)
+			else:
+				interface.error(403, "Tokens do not match.")
+		return wrapper
+	return init_wrapper
 
 def algorithms_validity(function):
 	def wrapper(interface):
