@@ -37,7 +37,7 @@ def register(interface):
 	public_keys.raw = interface.data
 	public_keys.save()
 
-	user_tokens[interface.json["login"]] = interface.json["token"]
+	user_tokens[interface.json["login"]] = common.hash(interface.json["token"]).hexdigest()
 	user_tokens.save()
 
 	interface.finish(200)
