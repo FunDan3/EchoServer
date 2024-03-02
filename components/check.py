@@ -60,6 +60,28 @@ def login_check(user_tokens):
 		return wrapper
 	return init_wrapper
 
+def username_validity(function):
+	def wrapper(interface):
+		_interface_init(interface)
+		for login_character in interface.json["username"]:
+			if login_character not in allowed_characters:
+				interface.error(401, f"Username field can only contain letters numbers and underscore. Not {login_character}")
+				break
+		if not interface.finished:
+			function(interface)
+	return wrapper
+
+def username_does_exist(function):
+	def wrapper(interface):
+		_interface_init(interface)
+		if os.path.exists(f"./storage/users/{interface.json['username']}"):
+			function(interface)
+		else:
+			interface.error(401, f"User {interface.json['username']} doesnt exist!")
+	return wrapper
+
+
+
 def algorithms_validity(function):
 	def wrapper(interface):
 		_interface_init(interface)

@@ -25,6 +25,16 @@ api = WebServer(settings["ip"], settings["port"])
 if settings["ssl"]["enabled"]:
 	api.convert_to_ssl(config["ssl"]["certificate_path"], config["ssl"]["key_path"])
 
+@api.get("/read_public_keys")
+@check.verify(["username"])
+@check.username_validity
+@check.username_does_exist
+def read_public_keys(interface):
+	with open(f"./storage/users/{interface.json['username']}/public_keys.mjson", "rb") as f:
+		interface.write(f.read())
+	interface.header("Content-Type", "text/json")
+	interface.finish(200)
+
 @api.post("/store_container")
 @check.verify(["login", "token"])
 @check.login_validity
@@ -66,7 +76,6 @@ def register(interface):
 	public_keys.save()
 
 	user_tokens[interface.json["login"]] = common.hash(interface.json["token"]).hexdigest()
-	print(user_tokens)
 	user_tokens.save()
 
 	interface.finish(200)
