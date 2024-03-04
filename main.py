@@ -19,7 +19,7 @@ template = {"ip": "",
 	}
 })
 
-user_tokens = config.merged_uncertain("./storage/users/tokens.json", template = {})
+user_tokens = {}
 
 api = WebServer(settings["ip"], settings["port"])
 if settings["ssl"]["enabled"]:
@@ -39,7 +39,7 @@ def read_public_keys(interface):
 @check.verify(["login", "token"])
 @check.login_validity
 @check.login_does_exist
-@check.login_check(user_tokens)
+@check.login(user_tokens)
 def store_container(interface):
 	encrypted_container = interface.data
 	if len(encrypted_container) > 2**20*10: #10 megabytes
@@ -53,7 +53,8 @@ def store_container(interface):
 @check.verify(["login", "token", "ReadContainer"])
 @check.login_validity
 @check.login_does_exist
-@check.login_check(user_tokens)
+@check.ensure_login_hashes(user_tokens)
+@check.login(user_tokens)
 def login(interface):
 	if interface.json["ReadContainer"] == "yes":
 		if not os.path.exists(f"./storage/users/{interface.json['login']}/container.epickle"):
@@ -75,9 +76,10 @@ def register(interface):
 	public_keys.raw = interface.data
 	public_keys.save()
 
-	user_tokens[interface.json["login"]] = common.hash(interface.json["token"]).hexdigest()
-	user_tokens.save()
-
+	user_token = common.hash(interface.json["login"]+interface.json["token"]).digest()
+	user_tokens[interface.json["login"]] = user_token
+	with open(f"./storage/users/{interface.json['login']}/token.hash", "wb") as f:
+		f.write(user_token)
 	interface.finish(200)
 
 @api.get("/EchoMessagerServerInfo")

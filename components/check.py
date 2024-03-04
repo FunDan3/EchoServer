@@ -27,6 +27,9 @@ def login_validity(function):
 			if login_character not in allowed_characters:
 				interface.error(401, f"Login field can only contain letters numbers and underscore. Not {login_character}")
 				break
+		if len(interface.json["login"].encode("utf-8")) not in range(3, 64+1):
+				if not interface.finished:
+					interface.error(401, f"Login field length can range only from 3 to 64 bytes.")
 		if not interface.finished:
 			function(interface)
 	return wrapper
@@ -49,11 +52,23 @@ def login_does_exist(function):
 			interface.error(401, f"User {interface.json['login']} doesnt exist!")
 	return wrapper
 
-def login_check(user_tokens):
+def ensure_login_hashes(user_tokens):
 	def init_wrapper(function):
 		def wrapper(interface):
 			_interface_init(interface)
-			if user_tokens[interface.json["login"]] == common.hash(interface.json["token"]).hexdigest():
+			if interface.json["login"] not in user_tokens:
+				with open(f"./storage/users/{interface.json['login']}/token.hash", "rb") as f:
+					user_tokens[interface.json["login"]] = f.read()
+			function(interface)
+
+		return wrapper
+	return init_wrapper
+
+def login(user_tokens):
+	def init_wrapper(function):
+		def wrapper(interface):
+			_interface_init(interface)
+			if user_tokens[interface.json["login"]] == common.hash(interface.json["login"]+interface.json["token"]).digest():
 				function(interface)
 			else:
 				interface.error(403, "Tokens do not match.")
