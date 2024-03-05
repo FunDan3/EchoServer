@@ -34,6 +34,10 @@ class merged_certain:
 		with open(self.path, "wb") as f:
 			f.write(json.dumps(self.content).encode("utf-8")+b"\n")
 			f.write(self.raw)
+	#list methods
+	def append(self, item):
+		self.content.append(item)
+
 	#dict methods:
 	def clear(self):
 		self.content.clear()

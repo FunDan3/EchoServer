@@ -3,6 +3,7 @@ from httpdecolib import WebServer
 import pqcryptography as pqc
 import json
 import os
+import time
 
 from components import config
 from components import common
@@ -24,6 +25,37 @@ user_tokens = {}
 api = WebServer(settings["ip"], settings["port"])
 if settings["ssl"]["enabled"]:
 	api.convert_to_ssl(config["ssl"]["certificate_path"], config["ssl"]["key_path"])
+
+@api.post("/direct_message")
+@check.verify(["login", "token", "username"])
+@check.login_validity
+@check.login_does_exist
+@check.login(user_tokens)
+@check.username_validity
+@check.username_does_exist
+def direct_message(interface):
+	inbox_index = config.merged_certain(f"./storage/users/{interface.json['username']}/inbox/index.json")
+	if interface.json["login"] not in inbox_index:
+		inbox_index[interface.json["login"]] = 0
+	inbox_index[interface.json["login"]] += 1
+	inbox_index.save()
+
+	inbox_data = config.merged_uncertain(f"./storage/users/{interface.json['username']}/inbox/{interface.json['login']}/data.json",
+		template = [])
+
+	last_mid = -1
+	for mid, _, _ in inbox_data:
+		last_mid = mid if last_mid < mid else last_mid
+
+	with open(f"./storage/users/{interface.json['username']}/inbox/{interface.json['login']}/{last_mid+1}.pqenc", "wb") as f:
+		f.write(interface.data)
+
+	inbox_data.append((
+		last_mid+1,
+		f"./storage/users/{interface.json['username']}/inbox/{interface.json['login']}/{last_mid+1}.mjson",
+		time.time()))
+	inbox_data.save()
+	interface.finish(200)
 
 @api.get("/read_public_keys")
 @check.verify(["username"])
@@ -75,6 +107,9 @@ def register(interface):
 	public_keys["sig_algorithm"] = interface.json["sig_algorithm"]
 	public_keys.raw = interface.data
 	public_keys.save()
+
+	inbox_index = config.merged_certain(f"./storage/users/{interface.json['login']}/inbox/index.json")
+	inbox_index.save()
 
 	user_token = common.hash(interface.json["login"]+interface.json["token"]).digest()
 	user_tokens[interface.json["login"]] = user_token
