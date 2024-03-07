@@ -26,6 +26,16 @@ api = WebServer(settings["ip"], settings["port"])
 if settings["ssl"]["enabled"]:
 	api.convert_to_ssl(config["ssl"]["certificate_path"], config["ssl"]["key_path"])
 
+@api.get("/index_inbox")
+@check.verify(["login", "token"])
+@check.login_validity
+@check.login_does_exist
+@check.login(user_tokens)
+def index_inbox(interface):
+	inbox_index = config.merged_certain(f"./storage/users/{interface.json['login']}/inbox/index.json")
+	interface.write(json.dumps(inbox_index.content))
+	interface.finish(200)
+
 @api.post("/direct_message")
 @check.verify(["login", "token", "username"])
 @check.login_validity
