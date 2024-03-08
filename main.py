@@ -26,6 +26,31 @@ api = WebServer(settings["ip"], settings["port"])
 if settings["ssl"]["enabled"]:
 	api.convert_to_ssl(config["ssl"]["certificate_path"], config["ssl"]["key_path"])
 
+@api.get("/read_direct_message")
+@check.verify(["login", "token", "username"])
+@check.login_validity
+@check.username_validity
+@check.login_does_exist
+@check.username_does_exist
+@check.login(user_tokens)
+def read_direct_message(interface): #TODO: Violated my own policy of making checks only in check.py. will fix later
+	if not os.path.exists(f"./storage/users/{interface.json['login']}/inbox/{interface.json['username']}"):
+		interface.error(404, "This user never sent you any messages")
+		return
+	inbox_data = config.merged_certain(f"./storage/users/{interface.json['login']}/inbox/{interface.json['username']}/data.json")
+	if not inbox_data:
+		interface.error(404, "You have no new messages from this user")
+		return
+	message_id, message_path, message_time = inbox_data[0]
+	inbox_data.pop(0)
+	for i in range(len(inbox_data)):
+		inbox_data[i][0] -= 1 #make message ids go from 0 to N
+	inbox_data.save()
+	interface.write(json.dumps({"sent_time": message_time}) + "\n")
+	with open(message_path, "rb") as f:
+		interface.write(f.read())
+	interface.finish(200)
+
 @api.get("/index_inbox")
 @check.verify(["login", "token"])
 @check.login_validity
@@ -62,7 +87,7 @@ def direct_message(interface):
 
 	inbox_data.append((
 		last_mid+1,
-		f"./storage/users/{interface.json['username']}/inbox/{interface.json['login']}/{last_mid+1}.mjson",
+		f"./storage/users/{interface.json['username']}/inbox/{interface.json['login']}/{last_mid+1}.pqenc",
 		time.time()))
 	inbox_data.save()
 	interface.finish(200)

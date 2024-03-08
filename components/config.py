@@ -37,7 +37,10 @@ class merged_certain:
 	#list methods
 	def append(self, item):
 		self.content.append(item)
-
+	def pop(self, item):
+		self.content.pop(item)
+	def __len__(self):
+		return len(self.content)
 	#dict methods:
 	def clear(self):
 		self.content.clear()
