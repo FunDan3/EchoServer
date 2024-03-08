@@ -46,6 +46,11 @@ def read_direct_message(interface): #TODO: Violated my own policy of making chec
 	for i in range(len(inbox_data)):
 		inbox_data[i][0] -= 1 #make message ids go from 0 to N
 	inbox_data.save()
+
+	inbox_index = config.merged_certain(f"./storage/users/{interface.json['login']}/inbox/index.json")
+	inbox_index[interface.json["username"]] -= 1
+	inbox_index.save()
+
 	interface.write(json.dumps({"sent_time": message_time}) + "\n")
 	with open(message_path, "rb") as f:
 		interface.write(f.read())
