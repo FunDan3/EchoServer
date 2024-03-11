@@ -54,6 +54,7 @@ def read_direct_message(interface): #TODO: Violated my own policy of making chec
 	interface.write(json.dumps({"sent_time": message_time}) + "\n")
 	with open(message_path, "rb") as f:
 		interface.write(f.read())
+	os.remove(message_path)
 	interface.finish(200)
 
 @api.get("/index_inbox")
